@@ -1,0 +1,21 @@
+# Source code
+src/
+__tests__/
+
+# Configuration files
+tsconfig.json
+jest.config.js
+.eslintrc
+.gitignore
+.npmignore
+
+# System files
+.idea/
+node_modules/
+*.log
+
+# Documentation
+docs/
+*.md
+!README.md
+!LICENSE 

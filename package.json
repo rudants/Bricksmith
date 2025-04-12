@@ -1,0 +1,47 @@
+{
+  "name": "bricksmith",
+  "version": "0.1.0",
+  "description": "A lightweight, extensible library for object mapping in JavaScript and TypeScript with transformation support.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint"
+  },
+  "keywords": [
+    "mapper",
+    "data-mapping",
+    "transformation",
+    "typescript"
+  ],
+  "author": "Rudakov Anton <rudants@protonmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rudants/bricksmith.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rudants/bricksmith/issues"
+  },
+  "homepage": "https://github.com/rudants/bricksmith#readme",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
+    "@typescript-eslint/parser": "^5.59.0",
+    "eslint": "^8.38.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.8.3"
+  }
+} 
