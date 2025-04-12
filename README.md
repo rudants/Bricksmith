@@ -196,19 +196,37 @@ interface Construction<Source, Target> {
 
 ### Workspace Tools
 
-The library supports preprocessing and postprocessing through workspace tools:
+Bricksmith provides four hooks for data preprocessing and postprocessing:
+
+1. `beforeBuild` - Called before all transformations
+2. `beforeBrick` - Called before each brick processing
+3. `afterBrick` - Called after each brick processing
+4. `afterBuild` - Called after all transformations
+
+Example of using hooks:
 
 ```typescript
-interface BrickTool<Source, Target> {
-  // Tool name for identification
-  name: string;
-  
-  // Preprocess materials before building
-  beforeBuild?: (materials: Source, workspace: WorkSpace<Source, Target>) => Source | null;
-  
-  // Process result after building
-  afterBuild?: (result: Target, workspace: WorkSpace<Source, Target>) => void;
-}
+const tool = {
+  name: 'myTool',
+  beforeBuild: (materials, workspace) => {
+    // Preprocess all materials
+    return materials;
+  },
+  beforeBrick: (brick, materials, workspace) => {
+    // Preprocess materials for specific brick
+    return materials;
+  },
+  afterBrick: (brick, value, result, workspace) => {
+    // Postprocess after specific brick
+  },
+  afterBuild: (result, workspace) => {
+    // Postprocess result
+  }
+};
+
+const bricksmith = new Bricksmith(blueprint, {
+  tools: [tool]
+});
 ```
 
 ### WorkSpace

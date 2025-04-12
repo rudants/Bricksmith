@@ -51,12 +51,31 @@ export class Bricksmith<Source = Record<string, unknown>, Target = Record<string
     const result = {} as Target;
 
     for (const brick of this.blueprint.bricks) {
-      if (this.shouldApplyBrick(brick, materials, workspace)) {
-        const value = this.getValueFromMaterials(brick, materials);
+      if (!this.shouldApplyBrick(brick, materials, workspace)) {
+        continue;
+      }
+
+      // Call beforeBrick hook for each tool
+      for (const tool of this.tools) {
+        if (tool.beforeBrick) {
+          const newMaterials = tool.beforeBrick(brick, materials, workspace);
+          if (newMaterials !== null) {
+            materials = newMaterials;
+          }
+        }
+      }
+
+      const value = this.getValueFromMaterials(brick, materials);
+      
+      if (!this.shouldSkipValue(value, brick)) {
+        const transformedValue = this.transformValue(value, materials, brick);
+        this.setValueInStructure(brick.target, transformedValue, result);
         
-        if (!this.shouldSkipValue(value, brick)) {
-          const transformedValue = this.transformValue(value, materials, brick);
-          this.setValueInStructure(brick.target, transformedValue, result);
+        // Call afterBrick hook for each tool
+        for (const tool of this.tools) {
+          if (tool.afterBrick) {
+            tool.afterBrick(brick, transformedValue, result, workspace);
+          }
         }
       }
     }
@@ -104,7 +123,7 @@ export class Bricksmith<Source = Record<string, unknown>, Target = Record<string
   private shouldApplyBrick(
     brick: Brick<Source, Target>,
     materials: Source,
-    workspace: WorkSpace<Source, Target>
+    _workspace: WorkSpace<Source, Target>
   ): boolean {
     if (brick.condition && !brick.condition(materials)) {
       return false;

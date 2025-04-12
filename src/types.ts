@@ -1,177 +1,187 @@
 /**
- * Типы для работы с материалами и кирпичами
+ * Types for working with materials and bricks
  */
-// Ключ для доступа к материалу
+// Key for accessing material
 export type MaterialKey<S = any> = keyof S;
 
-// Шаблон для путей к кирпичам
+// Template for brick paths
 export type BrickPath = 
   | `${string}.${string}` 
   | `${string}[${number}]` 
   | `${string}[${string}]`;
 
-// Путь к целевому кирпичу
+// Path to target brick
 export type TargetPath<T = any> = T extends Record<any, any> ? (keyof T | BrickPath) : string | number;
 
 /**
- * Функции для работы с кирпичами
+ * Functions for working with bricks
  */
-// Функция обработки кирпича
+// Brick processing function
 export type BrickTransform<S = any, V = any, R = any> = (value: V, source: S) => R;
 
-// Функция проверки применимости кирпича
+// Brick applicability check function
 export type BrickCondition<S = any> = (source: S) => boolean;
 
 /**
- * Базовый кирпич - основной строительный блок
+ * Base brick - main building block
  * 
- * @template Source - Тип исходного материала
- * @template Target - Тип целевой структуры
- * @template Value - Тип извлекаемого значения
- * @template Result - Тип результата обработки
+ * @template Source - Source material type
+ * @template Target - Target structure type
+ * @template Value - Extracted value type
+ * @template Result - Processing result type
  */
 export interface Brick<Source = any, Target = any, Value = any, Result = any> {
   /**
-   * Источник материала для кирпича
+   * Source material for brick
    */
   source?: MaterialKey<Source> | BrickPath | undefined;
 
   /**
-   * Позиция кирпича в целевой структуре
+   * Position of brick in target structure
    */
   target: TargetPath<Target>;
 
   /**
-   * Функция обработки кирпича
+   * Brick processing function
    */
   transform?: BrickTransform<Source, Value, Result>;
 
   /**
-   * Запасной кирпич, если материал не найден
+   * Fallback brick if material is not found
    */
   fallback?: Result;
 
   /**
-   * Сохранять пустые кирпичи
+   * Preserve empty bricks
    */
   preserveNull?: boolean;
 
   /**
-   * Условие использования кирпича
+   * Brick usage condition
    */
   condition?: BrickCondition<Source>;
 }
 
 /**
- * Чертеж - описание структуры
+ * Blueprint - structure description
  */
 export interface Blueprint<Source = any, Target = any> {
   /**
-   * Массив кирпичей для строительства
+   * Array of bricks for construction
    */
   bricks: Array<Brick<Source, Target, any, any>>;
 }
 
 /**
- * Настройки строительства
+ * Construction settings
  */
 export interface Construction<Source = any, Target = any> {
   /**
-   * Строгий режим - не пропускать пустые кирпичи
+   * Strict mode - do not skip empty bricks
    */
   strict?: boolean;
   
   /**
-   * Пропускать пустые кирпичи
+   * Skip empty bricks
    */
   skipUndefined?: boolean;
   
   /**
-   * Пропускать дыры в структуре
+   * Skip holes in structure
    */
   skipNull?: boolean;
   
   /**
-   * Пропускать дыры в структуре
+   * Skip holes in structure
    */
   skipHoles?: boolean;
   
   /**
-   * Инструменты для строительства
+   * Construction tools
    */
   tools?: BrickTool<Source, Target>[];
   
   /**
-   * Дополнительные настройки
+   * Additional settings
    */
   [key: string]: unknown;
 }
 
 /**
- * Результат строительства
+ * Build result
  */
 export type BuildResult<T> = T;
 
 /**
- * Рабочее пространство
+ * Workspace
  */
 export interface WorkSpace<Source = any, Target = any> {
   /**
-   * Исходный материал
+   * Source material
    */
   materials: Source;
   
   /**
-   * Чертеж
+   * Blueprint
    */
   blueprint: Blueprint<Source, Target>;
   
   /**
-   * Настройки строительства
+   * Construction settings
    */
   construction: Construction<Source, Target>;
   
   /**
-   * Текущий обрабатываемый материал
+   * Current processed material
    */
   currentMaterial?: unknown;
   
   /**
-   * Текущая позиция в структуре
+   * Current position in structure
    */
   currentPosition?: TargetPath<Target>;
   
   /**
-   * Дополнительные данные
+   * Additional data
    */
   [key: string]: unknown;
 }
 
 /**
- * Инструмент для работы с кирпичами
+ * Tool for working with bricks
  */
 export interface BrickTool<Source = any, Target = any> {
   /**
-   * Название инструмента
+   * Tool name
    */
   name: string;
   
   /**
-   * Глобальная предобработка
+   * Global preprocessing
    */
   beforeBuild?: (materials: Source, workspace: WorkSpace<Source, Target>) => Source | null;
   
   /**
-   * Глобальная постобработка
+   * Preprocessing before each brick
+   */
+  beforeBrick?: (brick: Brick<Source, Target>, materials: Source, workspace: WorkSpace<Source, Target>) => Source | null;
+  
+  /**
+   * Postprocessing after each brick
+   */
+  afterBrick?: (brick: Brick<Source, Target>, value: unknown, result: Target, workspace: WorkSpace<Source, Target>) => void;
+  
+  /**
+   * Global postprocessing
    */
   afterBuild?: (result: Target, workspace: WorkSpace<Source, Target>) => void;
 }
 
 /**
- * Типы для расширения инструментами
+ * Types for tool extensions
  */
-// Расширение кирпича дополнительными свойствами
+// Brick extension with additional properties
 export type ExtendedBrick<Source = any, Target = any, E = Record<string, unknown>> = Brick<Source, Target> & E;
 
-// Расширение рабочего пространства
+// Workspace extension
 export type ExtendedWorkSpace<Source = any, Target = any, E = Record<string, unknown>> = WorkSpace<Source, Target> & E; 
