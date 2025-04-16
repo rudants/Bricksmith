@@ -389,4 +389,40 @@ describe('Basic mapping functionality', () => {
       });
     });
   });
+
+  describe('Brick skipping behavior', () => {
+    test('should skip bricks when source path does not exist and no fallback provided', () => {
+      const blueprint: Blueprint<Source, Target> = {
+        bricks: [
+          { source: 'nonExistentProperty' as keyof Source, target: 'name' },
+          { source: 'firstName', target: 'firstName' }
+        ]
+      };
+
+      const bricksmith = new Bricksmith<Source, Target>(blueprint);
+      const result = bricksmith.build(source);
+
+      // Проверяем, что brick с несуществующим source был пропущен
+      expect(result.name).toBeUndefined();
+      // Проверяем, что другие bricks работают нормально
+      expect(result.firstName).toBe('John');
+    });
+
+    test('should use fallback when source path does not exist but fallback is provided', () => {
+      const blueprint: Blueprint<Source, Target> = {
+        bricks: [
+          { source: 'nonExistentProperty' as keyof Source, target: 'name', fallback: 'Default Name' },
+          { source: 'firstName', target: 'firstName' }
+        ]
+      };
+
+      const bricksmith = new Bricksmith<Source, Target>(blueprint);
+      const result = bricksmith.build(source);
+
+      // Проверяем, что brick с несуществующим source использовал fallback
+      expect(result.name).toBe('Default Name');
+      // Проверяем, что другие bricks работают нормально
+      expect(result.firstName).toBe('John');
+    });
+  });
 });
