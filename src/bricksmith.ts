@@ -125,19 +125,8 @@ export class Bricksmith<Source = Record<string, unknown>, Target = Record<string
     materials: Source,
     _workspace: WorkSpace<Source, Target>
   ): boolean {
-    // Check the condition first if it exists
     if (brick.condition && !brick.condition(materials)) {
       return false;
-    }
-
-    // If source path is provided, check that it exists in materials
-    if (brick.source) {
-      // Get the value directly to check if it's undefined
-      const value = this.getValueFromMaterials(brick, materials);
-      // Skip the brick if the value is undefined and no fallback provided
-      if (value === undefined && brick.fallback === undefined) {
-        return false;
-      }
     }
 
     return true;
@@ -154,8 +143,9 @@ export class Bricksmith<Source = Record<string, unknown>, Target = Record<string
       return brick.fallback;
     }
 
-    // Get value directly using the source as key
-    const value = materials[brick.source as K];
+    // Check type and property existence
+    const key = typeof brick.source === 'string' ? brick.source : String(brick.source);
+    const value = materials[key as K];
     if (value === undefined) {
       return brick.fallback;
     }
