@@ -56,7 +56,24 @@ export type WithMovedValue<T, S extends Path, T2 extends Path, V, K extends bool
     ? WithTransformedValue<T, T2, V> 
     : K extends true
       ? WithTransformedValue<T, T2, V>
-      : Omit<WithTransformedValue<T, T2, V>, S extends keyof T ? S : never>;
+      : OmitNestedPath<WithTransformedValue<T, T2, V>, S>;
+
+/**
+ * Type helper for removing a nested path from an object type
+ * @template T Input data type
+ * @template P Path to remove
+ */
+export type OmitNestedPath<T, P extends Path> = P extends string
+  ? P extends `${infer Head}.${infer Tail}`
+    ? {
+        [K in keyof T]: K extends Head
+          ? OmitNestedPath<T[K & keyof T], Tail>
+          : T[K]
+      }
+    : {
+        [K in keyof T as K extends P ? never : K]: T[K]
+      }
+  : T;
 
 /**
  * Bricksmith - data processor with plugin support

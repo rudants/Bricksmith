@@ -315,6 +315,7 @@ describe('Bricksmith', () => {
         .build(nestedData);
 
       expect(result.data.user.emailNormalized).toBe('john@example.com');
+      // @ts-expect-error: email is removed, but we should check it
       expect(result.data.user.contacts.email).toBeUndefined();
     });
 
