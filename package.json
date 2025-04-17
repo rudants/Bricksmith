@@ -1,6 +1,6 @@
 {
   "name": "bricksmith",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "A lightweight, extensible library for object mapping in JavaScript and TypeScript with transformation support.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
