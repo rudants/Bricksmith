@@ -1,187 +1,246 @@
 /**
- * Types for working with materials and bricks
+ * Types for Bricksmith
  */
-// Key for accessing material
-export type MaterialKey<S = any> = keyof S;
-
-// Template for brick paths
-export type BrickPath = 
-  | `${string}.${string}` 
-  | `${string}[${number}]` 
-  | `${string}[${string}]`;
-
-// Path to target brick
-export type TargetPath<T = any> = T extends Record<any, any> ? (keyof T | BrickPath) : string | number;
 
 /**
- * Functions for working with bricks
+ * Data type for path in plugin
+ * String representing an object key
  */
-// Brick processing function
-export type BrickTransform<S = any, V = any, R = any> = (value: V, source: S) => R;
-
-// Brick applicability check function
-export type BrickCondition<S = any> = (source: S) => boolean;
+export type Path = string | number | symbol;
 
 /**
- * Base brick - main building block
- * 
- * @template Source - Source material type
- * @template Target - Target structure type
- * @template Value - Extracted value type
- * @template Result - Processing result type
+ * Splits path into parts for navigating nested objects
  */
-export interface Brick<Source = any, Target = any, Value = any, Result = any> {
-  /**
-   * Source material for brick
-   */
-  source?: MaterialKey<Source> | BrickPath | undefined;
+export type SplitPath<Path extends string> = Path extends `${infer Head}.${infer Tail}`
+  ? [...SplitPath<Head>, ...SplitPath<Tail>]
+  : Path extends `${infer Key}[*]${infer Rest}`
+    ? [Key, '*', ...SplitPath<Rest>]
+    : Path extends `${infer Key}[${infer Index}]${infer Rest}`
+      ? [Key, Index, ...SplitPath<Rest>]
+      : Path extends `[${infer Index}]${infer Rest}`
+        ? [Index, ...SplitPath<Rest>]
+        : Path extends ''
+          ? []
+          : [Path];
 
-  /**
-   * Position of brick in target structure
-   */
-  target: TargetPath<Target>;
+/**
+ * Gets value type by path parts
+ */
+export type GetValueByPathParts<T, Parts extends readonly any[]> = Parts extends [
+  infer Head,
+  ...infer Tail,
+]
+  ? Head extends keyof T
+    ? GetValueByPathParts<T[Head], Tail>
+    : Head extends '*'
+      ? T extends Array<infer U>
+        ? Tail['length'] extends 0
+          ? U
+          : GetValueByPathParts<U, Tail>
+        : never
+      : Head extends `${number}`
+        ? T extends Array<infer U>
+          ? GetValueByPathParts<U, Tail>
+          : never
+        : never
+  : T;
 
-  /**
-   * Brick processing function
-   */
-  transform?: BrickTransform<Source, Value, Result>;
+/**
+ * Gets value type by path string
+ */
+export type GetValueByPath<T, Path extends string> = GetValueByPathParts<
+  T,
+  SplitPath<Path>
+>;
 
-  /**
-   * Fallback brick if material is not found
-   */
-  fallback?: Result;
+/**
+ * Gets value type by key
+ */
+export type ValueType<T, P extends Path> = P extends keyof T
+  ? T[P]
+  : P extends string 
+    ? GetValueByPath<T, P>
+    : any;
 
-  /**
-   * Preserve empty bricks
-   */
-  preserveNull?: boolean;
+/**
+ * Type for setting value in an object by path
+ * Recursively builds a new type with added property
+ */
+export type SetValueByPath<T, P extends string, V> = 
+  P extends `${infer Head}.${infer Tail}`
+    ? {
+        [K in keyof T | Head]: K extends Head
+          ? Head extends keyof T
+            ? SetValueByPath<T[Head], Tail, V>
+            : SetValueByPath<Record<string, never>, Tail, V>
+          : K extends keyof T
+            ? T[K]
+            : never
+      }
+    : P extends keyof T
+      ? { [K in keyof T]: K extends P ? V : T[K] } & { [K in P]: V }
+      : T & { [K in P]: V };
 
-  /**
-   * Brick usage condition
-   */
-  condition?: BrickCondition<Source>;
+/**
+ * Type for object with transformed value by key
+ */
+export type WithTransformedValue<T, _S extends Path, T2 extends Path, V> = T2 extends keyof T
+  ? { [K in keyof T]: K extends T2 ? V : T[K] }
+  : T2 extends string
+    ? SetValueByPath<T, T2, V>
+    : T & { [K in T2 & string]: V };
+
+/**
+ * Plugin hooks
+ */
+export type Hook = 'before' | 'after';
+
+/**
+ * Transform context
+ */
+export interface TransformContext<T = any, S extends Path = string, T2 extends Path = string, V = any> {
+  /** Complete data set */
+  data: T;
+  /** Target path for saving the result */
+  target: T2;
+  /** Target value (if already exists) */
+  targetValue?: V;
+  /** Source path for getting data */
+  source: S;
+  /** Source value */
+  sourceValue: S extends keyof T 
+    ? T[S] 
+    : S extends string 
+      ? S extends `${string}[*]${string}` | `${string}[*]`
+        ? S extends `${string}[*]`
+          ? T extends Record<string, any[]>
+            ? T[keyof T] extends Array<infer U> ? U : any
+            : any
+          : any
+        : GetValueByPath<T, S>
+      : any;
 }
 
 /**
- * Blueprint - structure description
+ * Bricksmith plugin interface
+ * @template T Input data type
+ * @template S Source path for getting data
+ * @template T2 Target path for saving the result
+ * @template V Transformation result type
+ * @template A Type returned by the after hook (default V)
  */
-export interface Blueprint<Source = any, Target = any> {
-  /**
-   * Array of bricks for construction
+export interface BricksmithPlugin<
+  T = any, 
+  S extends Path = string,
+  T2 extends Path = string,
+  V = any,
+  A = V // Type returned by the after hook (default V)
+> {
+  /** 
+   * Source path for getting data
+   * Supports nested paths with dots, array access via [index], and wildcards [*]
    */
-  bricks: Array<Brick<Source, Target, any, any>>;
+  source: S;
+  
+  /** 
+   * Target path for saving transformed data
+   * If not specified, source value is used
+   * Supports nested paths with dots, array access via [index], and wildcards [*]
+   */
+  target?: T2;
+  
+  /** Transformation function */
+  transform: (context: TransformContext<T, S, T2>) => V;
+  
+  /** Hooks to execute before or after transformation */
+  hooks?: {
+    before?: (context: TransformContext<T, S, T2>) => TransformContext<T, S, T2>;
+    after?: (context: TransformContext<T, S, T2>, result: V) => A;
+  };
+  
+  /**
+   * Flag indicating whether to keep the source value when copying to a new path
+   * If true and source != target, the source value will be preserved
+   * If false or not specified, the source value is removed (move instead of copy)
+   * Works only if target differs from source
+   * @default false
+   */
+  keepSource?: boolean;
 }
 
 /**
- * Construction settings
+ * Plugin type
+ * @template T Input data type
+ * @template S Source path for getting data
+ * @template T2 Target path for saving the result
+ * @template V Transformation result type
+ * @template A Type returned by the after hook (default V)
  */
-export interface Construction<Source = any, Target = any> {
-  /**
-   * Strict mode - do not skip empty bricks
+export type PluginType<
+  T = any, 
+  S extends Path = string,
+  T2 extends Path = string,
+  V = any,
+  A = V // Type returned by the after hook (default V)
+> = BricksmithPlugin<T, S, T2, V, A>;
+
+/**
+ * Type for global hooks
+ */
+export interface BricksmithHooks {
+  /** 
+   * Global beforeBuild hook - called once before all transformations
+   * @param data Source data
+   * @param plugins List of plugins that will be applied
+   * @returns Modified source data
    */
-  strict?: boolean;
+  beforeBuild?(
+    data: any, 
+    plugins: BricksmithPlugin[]
+  ): any;
   
-  /**
-   * Skip empty bricks
+  /** 
+   * Global afterBuild hook - called once after all transformations
+   * @param data Resulting data after all transformations
+   * @param plugins List of plugins that were applied
+   * @returns Final modified data
    */
-  skipUndefined?: boolean;
-  
-  /**
-   * Skip holes in structure
-   */
-  skipNull?: boolean;
-  
-  /**
-   * Skip holes in structure
-   */
-  skipHoles?: boolean;
-  
-  /**
-   * Construction tools
-   */
-  tools?: BrickTool<Source, Target>[];
-  
-  /**
-   * Additional settings
-   */
-  [key: string]: unknown;
+  afterBuild?(
+    data: any, 
+    plugins: BricksmithPlugin[]
+  ): any;
 }
 
 /**
- * Build result
+ * Bricksmith configuration
  */
-export type BuildResult<T> = T;
-
-/**
- * Workspace
- */
-export interface WorkSpace<Source = any, Target = any> {
-  /**
-   * Source material
-   */
-  materials: Source;
-  
-  /**
-   * Blueprint
-   */
-  blueprint: Blueprint<Source, Target>;
-  
-  /**
-   * Construction settings
-   */
-  construction: Construction<Source, Target>;
-  
-  /**
-   * Current processed material
-   */
-  currentMaterial?: unknown;
-  
-  /**
-   * Current position in structure
-   */
-  currentPosition?: TargetPath<Target>;
-  
-  /**
-   * Additional data
-   */
-  [key: string]: unknown;
+export interface BricksmithConfig {
+  /** Global hooks for all plugins */
+  hooks?: BricksmithHooks;
 }
 
 /**
- * Tool for working with bricks
+ * Plugin execution result (for internal use)
  */
-export interface BrickTool<Source = any, Target = any> {
-  /**
-   * Tool name
-   */
-  name: string;
+export interface PluginResult {
+  /** Source data key */
+  source: string;
   
-  /**
-   * Global preprocessing
-   */
-  beforeBuild?: (materials: Source, workspace: WorkSpace<Source, Target>) => Source | null;
+  /** Target data key */
+  target: string;
   
-  /**
-   * Preprocessing before each brick
-   */
-  beforeBrick?: (brick: Brick<Source, Target>, materials: Source, workspace: WorkSpace<Source, Target>) => Source | null;
+  /** Transformation result */
+  result: any;
   
-  /**
-   * Postprocessing after each brick
-   */
-  afterBrick?: (brick: Brick<Source, Target>, value: unknown, result: Target, workspace: WorkSpace<Source, Target>) => void;
-  
-  /**
-   * Global postprocessing
-   */
-  afterBuild?: (result: Target, workspace: WorkSpace<Source, Target>) => void;
+  /** Whether the transformation was applied */
+  applied: boolean;
 }
 
 /**
- * Types for tool extensions
+ * Result of executing the plugin chain
+ * @template T Result type after all transformations
  */
-// Brick extension with additional properties
-export type ExtendedBrick<Source = any, Target = any, E = Record<string, unknown>> = Brick<Source, Target> & E;
-
-// Workspace extension
-export type ExtendedWorkSpace<Source = any, Target = any, E = Record<string, unknown>> = WorkSpace<Source, Target> & E; 
+export interface BricksmithResult<T = any> {
+  /** Transformed data */
+  data: T;
+} 
