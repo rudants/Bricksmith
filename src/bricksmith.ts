@@ -33,13 +33,13 @@ function getArrayIndex(part: string): number {
 /**
  * Helper type for extracting the result type from BricksmithPlugin
  */
-export type ExtractResultType<P> = P extends BricksmithPlugin<any, any, any, any, infer A> ? WithTransformedValue<any, any, any, A> : never;
+export type ExtractResultType<P> = P extends BricksmithPlugin<any, any, any, any, infer A> ? WithTransformedValue<any, any, A> : never;
 
 /**
  * Helper type for determining the result of the brick method
  */
 export type BrickResult<T, P> = P extends BricksmithPlugin<any, any, any, any, infer A> 
-  ? Bricksmith<WithTransformedValue<T, any, any, A>> 
+  ? Bricksmith<WithTransformedValue<T, any, A>> 
   : Bricksmith<T>;
 
 /**
@@ -53,10 +53,10 @@ export type BrickResult<T, P> = P extends BricksmithPlugin<any, any, any, any, i
  */
 export type WithMovedValue<T, S extends Path, T2 extends Path, V, K extends boolean = false> = 
   S extends T2 
-    ? WithTransformedValue<T, S, T2, V> 
+    ? WithTransformedValue<T, T2, V> 
     : K extends true
-      ? WithTransformedValue<T, S, T2, V>
-      : Omit<WithTransformedValue<T, S, T2, V>, S extends keyof T ? S : never>;
+      ? WithTransformedValue<T, T2, V>
+      : Omit<WithTransformedValue<T, T2, V>, S extends keyof T ? S : never>;
 
 /**
  * Bricksmith - data processor with plugin support
@@ -90,7 +90,7 @@ export class Bricksmith<T = any> {
     A = V,
     K extends boolean = false,
     R = S extends T2 
-      ? WithTransformedValue<T, S, T2, A> 
+      ? WithTransformedValue<T, T2, A> 
       : WithMovedValue<T, S, T2, A, K>
   >(
     plugin: BricksmithPlugin<T, S, T2, V, A> & { keepSource?: K }

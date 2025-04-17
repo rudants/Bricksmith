@@ -84,7 +84,7 @@ export type SetValueByPath<T, P extends string, V> =
 /**
  * Type for object with transformed value by key
  */
-export type WithTransformedValue<T, _S extends Path, T2 extends Path, V> = T2 extends keyof T
+export type WithTransformedValue<T, T2 extends Path, V> = T2 extends keyof T
   ? { [K in keyof T]: K extends T2 ? V : T[K] }
   : T2 extends string
     ? SetValueByPath<T, T2, V>
